@@ -1,10 +1,32 @@
-<!DOCTYPE html>
+index.html<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Dreamwash — Badgeuse</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, where, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCSZqfL3G-DK0VzNmptblT7F_kgq5R4Oww",
+    authDomain: "dreamwash-d4a2c.firebaseapp.com",
+    projectId: "dreamwash-d4a2c",
+    storageBucket: "dreamwash-d4a2c.firebasestorage.app",
+    messagingSenderId: "294836515742",
+    appId: "1:294836515742:web:3fdbe1b28db8f97b7cdc8f",
+    measurementId: "G-XR4FLMGP2P"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  window._db = db;
+  window._firebase = { collection, addDoc, getDocs, query, orderBy, limit, where, doc, setDoc, getDoc };
+  window._firebaseReady = true;
+  console.log('Firebase connecté ✅');
+</script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { background: #0D1B2E; font-family: 'Inter', sans-serif; color: #fff; min-height: 100vh; display: flex; flex-direction: column; user-select: none; }
@@ -406,7 +428,7 @@ function showConfirm() {
 // ═══════════════════════════════════════════════════════════════════════════
 // BADGE
 // ═══════════════════════════════════════════════════════════════════════════
-function badge() {
+async function badge() {
   const now = new Date();
   const hh = String(now.getHours()).padStart(2,'0');
   const mm = String(now.getMinutes()).padStart(2,'0');
@@ -419,12 +441,25 @@ function badge() {
     centreBadge: currentCentre,
     color: foundTech.color,
     time: timeStr,
-    date: dateStr
+    date: dateStr,
+    timestamp: now.getTime()
   };
+
+  // Sauvegarder en local
   badgeLog.unshift(entry);
-  // Keep only last 200 entries
   if (badgeLog.length > 200) badgeLog = badgeLog.slice(0,200);
   localStorage.setItem('dw_log', JSON.stringify(badgeLog));
+
+  // Sauvegarder sur Firebase
+  try {
+    if (window._db && window._firebase) {
+      const { collection, addDoc } = window._firebase;
+      await addDoc(collection(window._db, 'badgeages'), entry);
+      console.log('Badge sauvegardé Firebase ✅');
+    }
+  } catch(e) {
+    console.log('Firebase erreur (local sauvegardé):', e);
+  }
 
   // Success screen
   document.getElementById('sc-name').textContent = foundTech.nom;
@@ -465,19 +500,37 @@ function startCountdown() {
 // ═══════════════════════════════════════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════════════════════════════════════
-function showAdmin() {
+async function showAdmin() {
+  show('v-admin');
   const now = new Date();
   const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
   document.getElementById('admin-date-lbl').textContent = dateStr;
 
-  const todayLog = badgeLog.filter(l => l.date === dateStr);
+  let todayLog = badgeLog.filter(l => l.date === dateStr);
+
+  // Essayer de charger depuis Firebase
+  try {
+    if (window._db && window._firebase) {
+      const { collection, getDocs, query, where } = window._firebase;
+      const q = query(collection(window._db, 'badgeages'), where('date', '==', dateStr));
+      const snap = await getDocs(q);
+      const fbData = [];
+      snap.forEach(d => fbData.push(d.data()));
+      if (fbData.length > 0) {
+        todayLog = fbData.sort((a,b) => b.timestamp - a.timestamp);
+        console.log('Données Firebase chargées ✅', fbData.length, 'badges');
+      }
+    }
+  } catch(e) {
+    console.log('Firebase lecture erreur:', e);
+  }
+
   const uniq = [...new Set(todayLog.map(l=>l.nom))];
   const centres = [...new Set(todayLog.map(l=>l.centreBadge))];
 
   document.getElementById('adm-present').textContent = uniq.length;
   document.getElementById('adm-total').textContent = todayLog.length;
   document.getElementById('adm-centres').textContent = centres.length;
-  document.getElementById('admin-date-lbl').textContent = `Mercredi 15 Avril 2026`;
 
   const log = document.getElementById('adm-log');
   if (todayLog.length === 0) {
@@ -495,8 +548,6 @@ function showAdmin() {
       </div>`;
     }).join('');
   }
-
-  show('v-admin');
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
