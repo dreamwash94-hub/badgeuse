@@ -1,135 +1,119 @@
-index.html<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Dreamwash — Badgeuse</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<!-- Firebase -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getFirestore, collection, addDoc, getDocs, query, orderBy, limit, where, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+  import { getFirestore, collection, addDoc, getDocs, query, where, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
   const firebaseConfig = {
     apiKey: "AIzaSyCSZqfL3G-DK0VzNmptblT7F_kgq5R4Oww",
     authDomain: "dreamwash-d4a2c.firebaseapp.com",
     projectId: "dreamwash-d4a2c",
     storageBucket: "dreamwash-d4a2c.firebasestorage.app",
     messagingSenderId: "294836515742",
-    appId: "1:294836515742:web:3fdbe1b28db8f97b7cdc8f",
-    measurementId: "G-XR4FLMGP2P"
+    appId: "1:294836515742:web:3fdbe1b28db8f97b7cdc8f"
   };
-
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   window._db = db;
-  window._firebase = { collection, addDoc, getDocs, query, orderBy, limit, where, doc, setDoc, getDoc };
+  window._firebase = { collection, addDoc, getDocs, query, where, doc, getDoc };
   window._firebaseReady = true;
-  console.log('Firebase connecté ✅');
+
+  // Charger techniciens depuis portail Firebase
+  window.loadTechsFromFirebase = async function() {
+    try {
+      const snap = await getDoc(doc(db, 'portail', 'techs'));
+      if (snap.exists()) {
+        const techs = JSON.parse(snap.data().data);
+        if (techs?.length > 0) return techs;
+      }
+    } catch(e) { console.log('Erreur load techs:', e.message); }
+    return null;
+  };
+
+  console.log('🔥 Firebase connecté ✅');
 </script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: #0D1B2E; font-family: 'Inter', sans-serif; color: #fff; min-height: 100vh; display: flex; flex-direction: column; user-select: none; }
-
-.header { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; border-bottom: 1px solid #1A2D45; }
-.logo { display: flex; align-items: center; gap: 10px; }
-.logo-icon { width: 34px; height: 34px; background: #2563EB; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 17px; }
-.logo-txt { font-size: 15px; font-weight: 800; }
-.logo-sub { font-size: 11px; color: #2563EB; font-weight: 700; margin-top: 1px; }
-.clock { text-align: right; }
-.clock-time { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.clock-date { font-size: 11px; color: #4A6880; margin-top: 1px; }
-
-.main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.screen { width: 100%; max-width: 380px; }
-.view { display: none; animation: fi .2s ease; }
-.view.active { display: block; }
-@keyframes fi { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
-
-/* CODE */
-.code-title { font-size: 22px; font-weight: 900; text-align: center; margin-bottom: 4px; }
-.code-sub { font-size: 13px; color: #4A6880; text-align: center; margin-bottom: 24px; }
-.dots { display: flex; justify-content: center; gap: 16px; margin-bottom: 28px; }
-.dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #1E3450; background: transparent; transition: all .2s; }
-.dot.on { background: #2563EB; border-color: #2563EB; box-shadow: 0 0 14px rgba(37,99,235,.5); }
-.dot.err { background: #DC2626; border-color: #DC2626; animation: shk .3s ease; }
-.dot.ok { background: #16A34A; border-color: #16A34A; }
-@keyframes shk { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-5px)} 75%{transform:translateX(5px)} }
-
-.keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
-.key { width: 100%; aspect-ratio: 1.1; background: #111B2E; border: 1.5px solid #1A2D45; border-radius: 14px; font-size: 24px; font-weight: 700; color: #fff; cursor: pointer; font-family: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; transition: all .1s; }
-.key:hover { background: #162236; border-color: #2563EB; }
-.key:active { background: #2563EB; transform: scale(0.94); border-color: #2563EB; }
-.key-sub { font-size: 8px; color: #4A6880; font-weight: 500; letter-spacing: .08em; }
-.key.del { color: #4A6880; font-size: 20px; }
-.key.del:hover { color: #DC2626; border-color: #DC2626; }
-.key.empty { opacity: 0; pointer-events: none; }
-
-/* CONFIRMATION */
-.tech-card { background: #111B2E; border: 1px solid #1A2D45; border-radius: 16px; padding: 22px; text-align: center; margin-bottom: 22px; }
-.tech-avatar { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; margin: 0 auto 12px; }
-.tech-name { font-size: 22px; font-weight: 900; margin-bottom: 4px; }
-.tech-centre { font-size: 13px; color: #4A6880; }
-.btn-present { width: 100%; padding: 20px; background: #15803D; border: none; border-radius: 16px; color: #fff; font-size: 20px; font-weight: 900; cursor: pointer; font-family: inherit; transition: all .15s; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; box-shadow: 0 4px 20px rgba(21,128,61,.4); }
-.btn-present:hover { background: #16A34A; transform: translateY(-2px); }
-.btn-present:active { transform: scale(.97); }
-.btn-retour { width: 100%; padding: 12px; background: transparent; border: 1px solid #1A2D45; border-radius: 10px; color: #4A6880; font-size: 13px; font-weight: 600; cursor: pointer; font-family: inherit; transition: all .15s; }
-.btn-retour:hover { border-color: #2563EB; color: #2563EB; }
-
-/* SUCCESS */
-.success-wrap { text-align: center; }
-.success-circle { width: 100px; height: 100px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 48px; margin: 0 auto 20px; background: #15803D; box-shadow: 0 0 50px rgba(22,163,74,.5); animation: pop .4s ease; }
-@keyframes pop { 0%{transform:scale(0)} 70%{transform:scale(1.1)} 100%{transform:scale(1)} }
-.success-name { font-size: 26px; font-weight: 900; margin-bottom: 4px; }
-.success-centre { font-size: 14px; color: #4ADE80; font-weight: 600; margin-bottom: 4px; }
-.success-time { font-size: 48px; font-weight: 900; font-variant-numeric: tabular-nums; margin: 14px 0; color: #4ADE80; }
-.cra-notice { background: #0A1420; border: 1px solid #16A34A33; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px; }
-.cra-notice-t { font-size: 11px; color: #4A6880; margin-bottom: 4px; }
-.cra-notice-v { font-size: 14px; font-weight: 700; color: #4ADE80; }
-.countdown-bar { height: 4px; background: #1A2D45; border-radius: 2px; overflow: hidden; margin-top: 16px; }
-.countdown-fill { height: 100%; background: #2563EB; border-radius: 2px; transition: width 1s linear; }
-.countdown-txt { font-size: 11px; color: #4A6880; text-align: center; margin-top: 6px; }
-
-/* ADMIN */
-.admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-.admin-title { font-size: 20px; font-weight: 900; }
-.admin-date { font-size: 12px; color: #4A6880; }
-.stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 18px; }
-.stat-box { background: #111B2E; border: 1px solid #1A2D45; border-radius: 12px; padding: 14px; text-align: center; }
-.stat-val { font-size: 26px; font-weight: 900; }
-.stat-lbl { font-size: 10px; color: #4A6880; margin-top: 3px; }
-.log-title { font-size: 12px; font-weight: 700; color: #4A6880; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
-.log-list { display: flex; flex-direction: column; gap: 7px; max-height: 340px; overflow-y: auto; }
-.log-item { background: #111B2E; border: 1px solid #1A2D45; border-radius: 10px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; }
-.log-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; flex-shrink: 0; }
-.log-name { font-size: 13px; font-weight: 700; }
-.log-info { font-size: 11px; color: #4A6880; margin-top: 1px; }
-.log-time { margin-left: auto; font-size: 14px; font-weight: 800; color: #4ADE80; }
-.btn-close-admin { width: 100%; padding: 13px; background: #1A2D45; border: none; border-radius: 12px; color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; margin-top: 14px; transition: all .15s; }
-.btn-close-admin:hover { background: #253D5E; }
-
-/* CENTRE CONFIG */
-.centre-select { width: 100%; background: #111B2E; border: 1px solid #1A2D45; border-radius: 10px; padding: 12px 14px; color: #fff; font-size: 14px; font-family: inherit; outline: none; cursor: pointer; margin-bottom: 14px; }
-.centre-select option { background: #111B2E; }
-.centre-select:focus { border-color: #2563EB; }
-
-/* ERROR */
-.error-wrap { text-align: center; padding: 20px 0; }
-.error-icon { font-size: 60px; margin-bottom: 16px; }
-.error-msg { font-size: 18px; font-weight: 800; color: #F87171; margin-bottom: 8px; }
-.error-sub { font-size: 13px; color: #4A6880; margin-bottom: 24px; }
-.btn-retry { width: 100%; padding: 14px; background: #2563EB; border: none; border-radius: 12px; color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{background:#0D1B2E;font-family:'Inter',sans-serif;color:#fff;min-height:100vh;display:flex;flex-direction:column;user-select:none;}
+.header{display:flex;justify-content:space-between;align-items:center;padding:14px 24px;border-bottom:1px solid #1A2D45;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{width:34px;height:34px;background:#2563EB;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;}
+.logo-txt{font-size:15px;font-weight:800;}
+.logo-sub{font-size:11px;color:#2563EB;font-weight:700;margin-top:1px;}
+.clock{text-align:right;}
+.clock-time{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;}
+.clock-date{font-size:11px;color:#4A6880;margin-top:1px;}
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:16px;}
+.screen{width:100%;max-width:380px;}
+.view{display:none;animation:fi .2s ease;}
+.view.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.code-title{font-size:22px;font-weight:900;text-align:center;margin-bottom:4px;}
+.code-sub{font-size:13px;color:#4A6880;text-align:center;margin-bottom:24px;}
+.dots{display:flex;justify-content:center;gap:16px;margin-bottom:28px;}
+.dot{width:20px;height:20px;border-radius:50%;border:2px solid #1E3450;background:transparent;transition:all .2s;}
+.dot.on{background:#2563EB;border-color:#2563EB;box-shadow:0 0 14px rgba(37,99,235,.5);}
+.dot.err{background:#DC2626;border-color:#DC2626;animation:shk .3s ease;}
+.dot.ok{background:#16A34A;border-color:#16A34A;}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+.keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.key{width:100%;aspect-ratio:1.1;background:#111B2E;border:1.5px solid #1A2D45;border-radius:14px;font-size:24px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;transition:all .1s;}
+.key:hover{background:#162236;border-color:#2563EB;}
+.key:active{background:#2563EB;transform:scale(0.94);}
+.key-sub{font-size:8px;color:#4A6880;font-weight:500;letter-spacing:.08em;}
+.key.del{color:#4A6880;font-size:20px;}
+.key.del:hover{color:#DC2626;border-color:#DC2626;}
+.key.empty{opacity:0;pointer-events:none;}
+.tech-card{background:#111B2E;border:1px solid #1A2D45;border-radius:16px;padding:22px;text-align:center;margin-bottom:22px;}
+.tech-avatar{width:70px;height:70px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;margin:0 auto 12px;}
+.tech-name{font-size:22px;font-weight:900;margin-bottom:4px;}
+.tech-centre{font-size:13px;color:#4A6880;}
+.btn-present{width:100%;padding:20px;background:#15803D;border:none;border-radius:16px;color:#fff;font-size:20px;font-weight:900;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:12px;box-shadow:0 4px 20px rgba(21,128,61,.4);}
+.btn-present:hover{background:#16A34A;transform:translateY(-2px);}
+.btn-retour{width:100%;padding:12px;background:transparent;border:1px solid #1A2D45;border-radius:10px;color:#4A6880;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all .15s;}
+.btn-retour:hover{border-color:#2563EB;color:#2563EB;}
+.success-wrap{text-align:center;}
+.success-circle{width:100px;height:100px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:48px;margin:0 auto 20px;background:#15803D;box-shadow:0 0 50px rgba(22,163,74,.5);animation:pop .4s ease;}
+@keyframes pop{0%{transform:scale(0)}70%{transform:scale(1.1)}100%{transform:scale(1)}}
+.success-name{font-size:26px;font-weight:900;margin-bottom:4px;}
+.success-centre{font-size:14px;color:#4ADE80;font-weight:600;margin-bottom:4px;}
+.success-time{font-size:48px;font-weight:900;font-variant-numeric:tabular-nums;margin:14px 0;color:#4ADE80;}
+.cra-notice{background:#0A1420;border:1px solid #16A34A33;border-radius:12px;padding:14px 16px;margin-bottom:18px;}
+.cra-notice-t{font-size:11px;color:#4A6880;margin-bottom:4px;}
+.cra-notice-v{font-size:14px;font-weight:700;color:#4ADE80;}
+.countdown-bar{height:4px;background:#1A2D45;border-radius:2px;overflow:hidden;margin-top:16px;}
+.countdown-fill{height:100%;background:#2563EB;border-radius:2px;transition:width 1s linear;}
+.countdown-txt{font-size:11px;color:#4A6880;text-align:center;margin-top:6px;}
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.stat-box{background:#111B2E;border:1px solid #1A2D45;border-radius:12px;padding:14px;text-align:center;}
+.stat-val{font-size:26px;font-weight:900;}
+.stat-lbl{font-size:10px;color:#4A6880;margin-top:3px;}
+.log-list{display:flex;flex-direction:column;gap:7px;max-height:300px;overflow-y:auto;}
+.log-item{background:#111B2E;border:1px solid #1A2D45;border-radius:10px;padding:10px 14px;display:flex;align-items:center;gap:12px;}
+.log-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;}
+.log-name{font-size:13px;font-weight:700;}
+.log-info{font-size:11px;color:#4A6880;margin-top:1px;}
+.log-time{margin-left:auto;font-size:14px;font-weight:800;color:#4ADE80;}
+.btn-close-admin{width:100%;padding:13px;background:#1A2D45;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:14px;}
+.centre-select{width:100%;background:#111B2E;border:1px solid #1A2D45;border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;font-family:inherit;outline:none;cursor:pointer;margin-bottom:14px;}
+.centre-select option{background:#111B2E;}
+.error-wrap{text-align:center;padding:20px 0;}
+.error-icon{font-size:60px;margin-bottom:16px;}
+.error-msg{font-size:18px;font-weight:800;color:#F87171;margin-bottom:8px;}
+.error-sub{font-size:13px;color:#4A6880;margin-bottom:24px;}
+.btn-retry{width:100%;padding:14px;background:#2563EB;border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-sync{width:100%;padding:13px;background:#2563EB;border:none;border-radius:12px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px;display:flex;align-items:center;justify-content:center;gap:8px;}
 </style>
 </head>
 <body>
-
 <div class="header">
   <div class="logo">
     <div class="logo-icon">💧</div>
-    <div>
-      <div class="logo-txt">Dreamwash</div>
-      <div class="logo-sub" id="centre-header">Chargement…</div>
-    </div>
+    <div><div class="logo-txt">Dreamwash</div><div class="logo-sub" id="centre-header">Chargement…</div></div>
   </div>
   <div class="clock">
     <div class="clock-time" id="clock">--:--:--</div>
@@ -137,455 +121,333 @@ body { background: #0D1B2E; font-family: 'Inter', sans-serif; color: #fff; min-h
   </div>
 </div>
 
-<div class="main">
-  <div class="screen">
+<div class="main"><div class="screen">
 
-    <!-- SAISIE CODE -->
-    <div class="view active" id="v-code">
-      <div class="code-title">Entrez votre code</div>
-      <div class="code-sub">Votre code personnel à 4 chiffres</div>
-      <div class="dots" id="dots">
-        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
-      </div>
-      <div class="keypad" id="keypad"></div>
-    </div>
-
-    <!-- CONFIRMATION PRÉSENT -->
-    <div class="view" id="v-confirm">
-      <div class="tech-card" id="tc"></div>
-      <button class="btn-present" onclick="badge()">
-        ✅ Je suis présent
-      </button>
-      <button class="btn-retour" onclick="reset()">← Ce n'est pas moi</button>
-    </div>
-
-    <!-- SUCCÈS -->
-    <div class="view" id="v-success">
-      <div class="success-wrap">
-        <div class="success-circle">✓</div>
-        <div class="success-name" id="sc-name"></div>
-        <div class="success-centre" id="sc-centre"></div>
-        <div class="success-time" id="sc-time"></div>
-        <div class="cra-notice">
-          <div class="cra-notice-t">📋 CRA mis à jour automatiquement</div>
-          <div class="cra-notice-v" id="sc-cra"></div>
-        </div>
-        <div class="countdown-bar"><div class="countdown-fill" id="cd-fill" style="width:100%"></div></div>
-        <div class="countdown-txt" id="cd-txt">Retour dans 6s…</div>
-      </div>
-    </div>
-
-    <!-- ERREUR CODE -->
-    <div class="view" id="v-error">
-      <div class="error-wrap">
-        <div class="error-icon">❌</div>
-        <div class="error-msg">Code incorrect</div>
-        <div class="error-sub">Ce code ne correspond à aucun technicien.<br>Vérifiez et réessayez.</div>
-        <button class="btn-retry" onclick="reset()">← Réessayer</button>
-      </div>
-    </div>
-
-    <!-- ADMIN CODE -->
-    <div class="view" id="v-admin-code">
-      <button class="btn-retour" style="margin-bottom:16px;" onclick="reset()">← Retour</button>
-      <div class="code-title">Code administrateur</div>
-      <div class="code-sub">Accès réservé au responsable</div>
-      <div class="dots" id="dots-admin">
-        <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
-      </div>
-      <div class="keypad" id="keypad-admin"></div>
-    </div>
-
-    <!-- ADMIN DASHBOARD -->
-    <div class="view" id="v-admin">
-      <div class="admin-header">
-        <div>
-          <div class="admin-title">Présences du jour</div>
-          <div class="admin-date" id="admin-date-lbl"></div>
-        </div>
-        <button style="background:none;border:1px solid #1A2D45;border-radius:8px;padding:6px 12px;color:#4A6880;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="goAdminConfig()">⚙️ Centre</button>
-      </div>
-      <div class="stat-row">
-        <div class="stat-box"><div class="stat-val" style="color:#16A34A;" id="adm-present">0</div><div class="stat-lbl">Présents</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:#2563EB;" id="adm-total">0</div><div class="stat-lbl">Badges total</div></div>
-        <div class="stat-box"><div class="stat-val" style="color:#D97706;" id="adm-centres">0</div><div class="stat-lbl">Centres</div></div>
-      </div>
-      <div class="log-title">Journal des badgeages</div>
-      <div class="log-list" id="adm-log"></div>
-      <button class="btn-close-admin" onclick="reset()">← Fermer</button>
-    </div>
-
-    <!-- ADMIN CONFIG CENTRE -->
-    <div class="view" id="v-admin-config">
-      <button class="btn-retour" style="margin-bottom:16px;" onclick="show('v-admin')">← Retour</button>
-      <div class="code-title" style="margin-bottom:4px;">Centre actif</div>
-      <div class="code-sub">Associer cette tablette à un centre</div>
-      <select class="centre-select" id="centre-select-admin">
-        <option value="Aeroville A">Aeroville A</option>
-        <option value="Aeroville B">Aeroville B</option>
-        <option value="Lafayette Rouge">Lafayette Rouge</option>
-        <option value="Lafayette Vert">Lafayette Vert</option>
-        <option value="Cité des Sciences">Cité des Sciences</option>
-        <option value="Le Parks">Le Parks</option>
-        <option value="Parly2">Parly2</option>
-        <option value="Belleville">Belleville</option>
-        <option value="Suresnes">Suresnes</option>
-      </select>
-      <button class="btn-present" style="font-size:16px;padding:16px;" onclick="saveCentre()">✅ Enregistrer ce centre</button>
-      <div style="margin-top:20px;background:#111B2E;border:1px solid #1A2D45;border-radius:12px;padding:14px;">
-        <div style="font-size:11px;color:#4A6880;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Codes des techniciens</div>
-        <div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;" id="codes-list"></div>
-      </div>
-    </div>
-
+  <!-- SAISIE CODE -->
+  <div class="view active" id="v-code">
+    <div class="code-title">Entrez votre code</div>
+    <div class="code-sub" id="code-sub-txt">Code personnel à 4 chiffres</div>
+    <div class="dots" id="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="keypad" id="keypad"></div>
   </div>
-</div>
+
+  <!-- CONFIRMATION -->
+  <div class="view" id="v-confirm">
+    <div class="tech-card" id="tc"></div>
+    <button class="btn-present" onclick="badge()">✅ Je suis présent</button>
+    <button class="btn-retour" onclick="reset()">← Ce n'est pas moi</button>
+  </div>
+
+  <!-- SUCCÈS -->
+  <div class="view" id="v-success">
+    <div class="success-wrap">
+      <div class="success-circle">✓</div>
+      <div class="success-name" id="sc-name"></div>
+      <div class="success-centre" id="sc-centre"></div>
+      <div class="success-time" id="sc-time"></div>
+      <div class="cra-notice">
+        <div class="cra-notice-t">📋 CRA mis à jour automatiquement</div>
+        <div class="cra-notice-v" id="sc-cra"></div>
+      </div>
+      <div class="countdown-bar"><div class="countdown-fill" id="cd-fill" style="width:100%"></div></div>
+      <div class="countdown-txt" id="cd-txt">Retour dans 6s…</div>
+    </div>
+  </div>
+
+  <!-- ERREUR -->
+  <div class="view" id="v-error">
+    <div class="error-wrap">
+      <div class="error-icon">❌</div>
+      <div class="error-msg">Code incorrect</div>
+      <div class="error-sub">Ce code ne correspond à aucun technicien.<br>Vérifiez dans le portail de gestion.</div>
+      <button class="btn-retry" onclick="reset()">← Réessayer</button>
+    </div>
+  </div>
+
+  <!-- ADMIN CODE -->
+  <div class="view" id="v-admin-code">
+    <button class="btn-retour" style="margin-bottom:16px;" onclick="reset()">← Retour</button>
+    <div class="code-title">Code administrateur</div>
+    <div class="code-sub">Accès réservé au responsable</div>
+    <div class="dots" id="dots-admin"><div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="keypad" id="keypad-admin"></div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div class="view" id="v-admin">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div><div style="font-size:20px;font-weight:900;">Présences du jour</div><div style="font-size:12px;color:#4A6880;" id="admin-date-lbl"></div></div>
+      <button style="background:none;border:1px solid #1A2D45;border-radius:8px;padding:6px 12px;color:#4A6880;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="goAdminConfig()">⚙️ Config</button>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-val" style="color:#16A34A;" id="adm-present">0</div><div class="stat-lbl">Présents</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:#2563EB;" id="adm-total">0</div><div class="stat-lbl">Badges</div></div>
+      <div class="stat-box"><div class="stat-val" style="color:#D97706;" id="adm-centres">0</div><div class="stat-lbl">Centres</div></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#4A6880;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Journal</div>
+    <div class="log-list" id="adm-log"></div>
+    <button class="btn-close-admin" onclick="reset()">← Fermer</button>
+  </div>
+
+  <!-- ADMIN CONFIG -->
+  <div class="view" id="v-admin-config">
+    <button class="btn-retour" style="margin-bottom:16px;" onclick="show('v-admin')">← Retour</button>
+    <div class="code-title" style="margin-bottom:4px;">Configuration</div>
+    <div class="code-sub">Centre et synchronisation</div>
+
+    <select class="centre-select" id="centre-select-admin">
+      <option>Aeroville A</option><option>Aeroville B</option><option>Lafayette Rouge</option>
+      <option>Lafayette Vert</option><option>Cité des Sciences</option><option>Le Parks</option>
+      <option>Parly2</option><option>Belleville</option><option>Suresnes</option>
+    </select>
+    <button class="btn-present" style="font-size:16px;padding:16px;margin-bottom:14px;" onclick="saveCentre()">✅ Enregistrer ce centre</button>
+
+    <!-- SYNC BUTTON -->
+    <button class="btn-sync" onclick="syncTechsFromPortail()">🔄 Synchroniser les techniciens depuis le portail</button>
+    <div id="sync-status" style="text-align:center;font-size:12px;color:#4ADE80;margin-bottom:14px;min-height:18px;"></div>
+
+    <div style="background:#111B2E;border:1px solid #1A2D45;border-radius:12px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div style="font-size:11px;color:#4A6880;font-weight:700;text-transform:uppercase;letter-spacing:.08em;">Techniciens (<span id="techs-count">0</span>)</div>
+        <div id="last-sync" style="font-size:10px;color:#4A6880;"></div>
+      </div>
+      <div style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;" id="codes-list"></div>
+    </div>
+  </div>
+
+</div></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════════════
-// DATA
-// ═══════════════════════════════════════════════════════════════════════════
-const TECHS = [
-  { nom:"Abdelali",       code:"1001", centre:"Lafayette Rouge",    color:"#2563EB" },
-  { nom:"Abdeldjalil",    code:"1002", centre:"Lafayette Rouge",    color:"#7C3AED" },
-  { nom:"Abdesamad",      code:"1003", centre:"Parly2",             color:"#DC2626" },
-  { nom:"Adrien",         code:"1004", centre:"Le Parks",           color:"#16A34A" },
-  { nom:"Ahmadul Hassan", code:"1005", centre:"Aeroville A",        color:"#0891B2" },
-  { nom:"Ahmed",          code:"1006", centre:"Aeroville A",        color:"#D97706" },
-  { nom:"Ali",            code:"1007", centre:"Lafayette Vert",     color:"#9333EA" },
-  { nom:"Amine",          code:"1008", centre:"Belleville",         color:"#EA580C" },
-  { nom:"Amine_parly2",   code:"1009", centre:"Parly2",             color:"#BE185D" },
-  { nom:"Ayoub J.",       code:"1010", centre:"Lafayette Vert",     color:"#2563EB" },
-  { nom:"Bilal",          code:"1011", centre:"Parly2",             color:"#7C3AED" },
-  { nom:"Hamza",          code:"1012", centre:"Suresnes",           color:"#DC2626" },
-  { nom:"Ilyas",          code:"1013", centre:"Aeroville B",        color:"#16A34A" },
-  { nom:"Issam",          code:"1014", centre:"Parly2",             color:"#0891B2" },
-  { nom:"Jawad",          code:"1015", centre:"Cité des Sciences",  color:"#D97706" },
-  { nom:"Karim",          code:"1016", centre:"Lafayette Rouge",    color:"#9333EA" },
-  { nom:"Khalid",         code:"1017", centre:"Lafayette Rouge",    color:"#EA580C" },
-  { nom:"Khyal",          code:"1018", centre:"Aeroville A",        color:"#BE185D" },
-  { nom:"Marwan",         code:"1019", centre:"Suresnes",           color:"#2563EB" },
-  { nom:"Mehdi",          code:"1020", centre:"Aeroville B",        color:"#7C3AED" },
-  { nom:"Mourad",         code:"1021", centre:"Lafayette Rouge",    color:"#DC2626" },
-  { nom:"Nabil",          code:"1022", centre:"Belleville",         color:"#16A34A" },
-  { nom:"Nasser",         code:"1023", centre:"Le Parks",           color:"#0891B2" },
-  { nom:"Nordine",        code:"1024", centre:"Lafayette Vert",     color:"#D97706" },
-  { nom:"Omar",           code:"1025", centre:"Cité des Sciences",  color:"#9333EA" },
-  { nom:"Rachid",         code:"1026", centre:"Suresnes",           color:"#EA580C" },
-  { nom:"Rayan",          code:"1027", centre:"Lafayette Rouge",    color:"#BE185D" },
-  { nom:"Redouane",       code:"1028", centre:"Belleville",         color:"#2563EB" },
-  { nom:"Sadoul",         code:"1029", centre:"Aeroville A",        color:"#7C3AED" },
-  { nom:"Saiful Islam",   code:"1030", centre:"Aeroville B",        color:"#DC2626" },
-  { nom:"Siraj",          code:"1031", centre:"Aeroville A",        color:"#16A34A" },
-  { nom:"Sofiane",        code:"1032", centre:"Aeroville A",        color:"#0891B2" },
-  { nom:"Soufiane",       code:"1033", centre:"Belleville",         color:"#D97706" },
-  { nom:"Tarik",          code:"1034", centre:"Parly2",             color:"#9333EA" },
-  { nom:"Youssef",        code:"1035", centre:"Lafayette Vert",     color:"#EA580C" },
-  { nom:"Zakaria",        code:"1036", centre:"Le Parks",           color:"#BE185D" },
+// ═══ DATA ════════════════════════════════════════════════════════
+let TECHS = JSON.parse(localStorage.getItem('dw_techs_cache') || 'null') || [
+  {nom:"Sunam Uddin",code:"1001",centre:"Aeroville A",color:"#2563EB"},
+  {nom:"Abdeldjalil Boucedra",code:"1002",centre:"Aeroville A",color:"#7C3AED"},
+  {nom:"Mohammed El Amin Kechiouch",code:"1003",centre:"Aeroville A",color:"#DC2626"},
+  {nom:"Khalid Faris",code:"1004",centre:"Aeroville A",color:"#16A34A"},
+  {nom:"Ayoub Belaissaoui",code:"1005",centre:"Aeroville A",color:"#0891B2"},
+  {nom:"Siraj Uddin",code:"1006",centre:"Aeroville A",color:"#D97706"},
+  {nom:"Chabane Messaoudene",code:"1007",centre:"Aeroville A",color:"#9333EA"},
+  {nom:"Sodrul Islam Sepul",code:"1008",centre:"Aeroville A",color:"#EA580C"},
+  {nom:"Khyal Baz Ahmadzai",code:"1009",centre:"Aeroville A",color:"#BE185D"},
+  {nom:"Redwane Leulmi",code:"1010",centre:"Aeroville A",color:"#2563EB"},
+  {nom:"Mourad Bendjeddou",code:"1011",centre:"Aeroville A",color:"#7C3AED"},
+  {nom:"Nahidul Islam Shakil",code:"1012",centre:"Aeroville A",color:"#DC2626"},
+  {nom:"Iqbal Hussain",code:"1013",centre:"Aeroville A",color:"#16A34A"},
+  {nom:"Hakima Faris",code:"1014",centre:"Aeroville A",color:"#0891B2"},
+  {nom:"Hanif Kotoal",code:"1015",centre:"Aeroville A",color:"#D97706"},
+  {nom:"Sujon Miah",code:"1016",centre:"Aeroville A",color:"#9333EA"},
+  {nom:"Shahriar Islam Shawon",code:"1017",centre:"Aeroville A",color:"#EA580C"},
+  {nom:"Tarik Yousfi",code:"1018",centre:"Aeroville A",color:"#BE185D"},
+  {nom:"Mackan Camara",code:"1019",centre:"Aeroville A",color:"#2563EB"},
+  {nom:"Faris Meziane Mohamed",code:"1020",centre:"Aeroville A",color:"#7C3AED"},
+  {nom:"Iqbal Naqash",code:"1021",centre:"Aeroville A",color:"#DC2626"},
+  {nom:"Ahmadul Hassan",code:"1022",centre:"Aeroville A",color:"#16A34A"},
 ];
 
 const ADMIN_CODE = "9999";
-
-// State
-let currentCode = "";
-let adminCode = "";
 let foundTech = null;
 let currentCentre = localStorage.getItem('dw_centre') || "Aeroville A";
 let badgeLog = JSON.parse(localStorage.getItem('dw_log') || '[]');
 let countdownTimer = null;
-let countdownSec = 6;
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CLOCK
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ SYNC TECHNICIENS ════════════════════════════════════════════
+async function syncTechsFromPortail() {
+  const statusEl = document.getElementById('sync-status');
+  if (statusEl) statusEl.textContent = '⏳ Synchronisation en cours...';
+  try {
+    if (!window.loadTechsFromFirebase) {
+      if (statusEl) statusEl.textContent = '⚠️ Firebase pas encore prêt, réessayez';
+      return;
+    }
+    const fbTechs = await window.loadTechsFromFirebase();
+    if (fbTechs && fbTechs.length > 0) {
+      TECHS = fbTechs
+        .filter(t => !t.statut || t.statut === 'actif')
+        .map(t => ({
+          nom: t.nom,
+          code: t.code || '0000',
+          centre: t.centre || 'Aeroville A',
+          color: t.color || '#2563EB',
+        }));
+      localStorage.setItem('dw_techs_cache', JSON.stringify(TECHS));
+      const now = new Date().toLocaleString('fr-FR');
+      localStorage.setItem('dw_techs_sync', now);
+      if (statusEl) statusEl.textContent = `✅ ${TECHS.length} techniciens synchronisés !`;
+      renderCodesList();
+      initKeypads(); // Reconstruire avec nouveaux codes
+    } else {
+      if (statusEl) statusEl.textContent = '⚠️ Aucun technicien trouvé dans Firebase';
+    }
+  } catch(e) {
+    if (statusEl) statusEl.textContent = '❌ Erreur: ' + e.message;
+  }
+}
+
+function renderCodesList() {
+  const cl = document.getElementById('codes-list');
+  const cntEl = document.getElementById('techs-count');
+  const syncEl = document.getElementById('last-sync');
+  if (cntEl) cntEl.textContent = TECHS.length;
+  if (syncEl) syncEl.textContent = 'Sync: ' + (localStorage.getItem('dw_techs_sync') || 'Jamais');
+  if (!cl) return;
+  cl.innerHTML = TECHS.map(t => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #1A2D4522;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div style="width:26px;height:26px;border-radius:50%;background:${t.color}22;color:${t.color};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">${t.nom.charAt(0)}</div>
+        <div>
+          <div style="font-size:12px;font-weight:700;">${t.nom}</div>
+          <div style="font-size:10px;color:#4A6880;">${t.centre}</div>
+        </div>
+      </div>
+      <span style="font-family:monospace;font-size:14px;font-weight:800;color:#2563EB;background:#2563EB11;padding:3px 10px;border-radius:20px;flex-shrink:0;">${t.code}</span>
+    </div>`).join('');
+}
+
+// ═══ CLOCK ════════════════════════════════════════════════════════
 function updateClock() {
   const now = new Date();
   document.getElementById('clock').textContent =
     [now.getHours(),now.getMinutes(),now.getSeconds()].map(n=>String(n).padStart(2,'0')).join(':');
-  const jours = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-  const mois = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
+  const jours=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+  const mois=['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
   document.getElementById('datedisp').textContent =
     `${jours[now.getDay()]} ${now.getDate()} ${mois[now.getMonth()]} ${now.getFullYear()}`;
 }
 setInterval(updateClock, 1000);
 updateClock();
 
-// ═══════════════════════════════════════════════════════════════════════════
-// CENTRE
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ CENTRE ════════════════════════════════════════════════════════
 function setCentreHeader() {
   document.getElementById('centre-header').textContent = '📍 ' + currentCentre;
 }
-
 function saveCentre() {
   currentCentre = document.getElementById('centre-select-admin').value;
   localStorage.setItem('dw_centre', currentCentre);
   setCentreHeader();
   show('v-admin');
 }
-
 function goAdminConfig() {
   document.getElementById('centre-select-admin').value = currentCentre;
-  // Render codes list
-  const cl = document.getElementById('codes-list');
-  cl.innerHTML = TECHS.map(t => `
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #1A2D45;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="width:24px;height:24px;border-radius:50%;background:${t.color}22;color:${t.color};display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;">${t.nom.charAt(0)}</div>
-        <span style="font-size:12px;font-weight:600;">${t.nom}</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:10px;color:#4A6880;">${t.centre}</span>
-        <span style="font-family:monospace;font-size:13px;font-weight:800;color:#2563EB;">${t.code}</span>
-      </div>
-    </div>`).join('');
+  renderCodesList();
   show('v-admin-config');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// KEYPAD PRINCIPAL
-// ═══════════════════════════════════════════════════════════════════════════
-const KL = {'2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ'};
+// ═══ KEYPAD ════════════════════════════════════════════════════════
+const KL={'2':'ABC','3':'DEF','4':'GHI','5':'JKL','6':'MNO','7':'PQRS','8':'TUV','9':'WXYZ'};
 
 function buildKeypad(containerId, dotsId, onComplete) {
   const kp = document.getElementById(containerId);
   kp.innerHTML = '';
   let code = '';
-
-  function updateDots(state = 'normal') {
+  function updateDots(state='normal') {
     document.querySelectorAll(`#${dotsId} .dot`).forEach((d,i) => {
-      d.className = 'dot';
-      if (state === 'error') d.classList.add('err');
-      else if (state === 'ok') d.classList.add('ok');
-      else if (i < code.length) d.classList.add('on');
+      d.className='dot';
+      if(state==='error') d.classList.add('err');
+      else if(state==='ok') d.classList.add('ok');
+      else if(i<code.length) d.classList.add('on');
     });
   }
-
   function addDigit(d) {
-    if (code.length >= 4) return;
-    code += d;
-    updateDots();
-    if (code.length === 4) setTimeout(() => { onComplete(code, updateDots, () => { code=''; updateDots(); }); }, 150);
+    if(code.length>=4) return;
+    code+=d; updateDots();
+    if(code.length===4) setTimeout(()=>{onComplete(code,updateDots,()=>{code='';updateDots();});},150);
   }
-
-  function delDigit() { code = code.slice(0,-1); updateDots(); }
-
-  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(k => {
-    const btn = document.createElement('button');
-    if (k === '') { btn.className = 'key empty'; kp.appendChild(btn); return; }
-    btn.className = 'key' + (k==='⌫'?' del':'');
-    btn.innerHTML = k==='⌫' ? '⌫' : k+(KL[k]?`<span class="key-sub">${KL[k]}</span>`:'');
-    btn.addEventListener('click', () => k==='⌫' ? delDigit() : addDigit(k));
+  function delDigit() { code=code.slice(0,-1); updateDots(); }
+  ['1','2','3','4','5','6','7','8','9','','0','⌫'].forEach(k=>{
+    const btn=document.createElement('button');
+    if(k===''){btn.className='key empty';kp.appendChild(btn);return;}
+    btn.className='key'+(k==='⌫'?' del':'');
+    btn.innerHTML=k==='⌫'?'⌫':k+(KL[k]?`<span class="key-sub">${KL[k]}</span>`:'');
+    btn.addEventListener('click',()=>k==='⌫'?delDigit():addDigit(k));
     kp.appendChild(btn);
   });
-
   updateDots();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// INIT KEYPADS
-// ═══════════════════════════════════════════════════════════════════════════
-buildKeypad('keypad', 'dots', (code, updateDots, resetCode) => {
-  // Check admin code first
-  if (code === ADMIN_CODE) {
-    updateDots('ok');
-    setTimeout(() => { resetCode(); show('v-admin-code'); }, 400);
-    return;
-  }
-  const tech = TECHS.find(t => t.code === code);
-  if (tech) {
-    updateDots('ok');
-    foundTech = tech;
-    setTimeout(() => showConfirm(), 400);
-  } else {
-    updateDots('error');
-    setTimeout(() => { resetCode(); }, 900);
-    setTimeout(() => show('v-error'), 1100);
-  }
-});
+function initKeypads() {
+  buildKeypad('keypad','dots',(code,updateDots,resetCode)=>{
+    if(code===ADMIN_CODE){updateDots('ok');setTimeout(()=>{resetCode();show('v-admin-code');},400);return;}
+    const tech=TECHS.find(t=>t.code===code);
+    if(tech){updateDots('ok');foundTech=tech;setTimeout(()=>showConfirm(),400);}
+    else{updateDots('error');setTimeout(()=>{resetCode();},900);setTimeout(()=>show('v-error'),1100);}
+  });
+  buildKeypad('keypad-admin','dots-admin',(code,updateDots,resetCode)=>{
+    if(code===ADMIN_CODE){updateDots('ok');setTimeout(()=>{resetCode();showAdmin();},400);}
+    else{updateDots('error');setTimeout(()=>resetCode(),900);}
+  });
+}
 
-buildKeypad('keypad-admin', 'dots-admin', (code, updateDots, resetCode) => {
-  if (code === ADMIN_CODE) {
-    updateDots('ok');
-    setTimeout(() => { resetCode(); showAdmin(); }, 400);
-  } else {
-    updateDots('error');
-    setTimeout(() => resetCode(), 900);
-  }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// CONFIRM
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ CONFIRM & BADGE ════════════════════════════════════════════
 function showConfirm() {
-  document.getElementById('tc').innerHTML = `
+  document.getElementById('tc').innerHTML=`
     <div class="tech-avatar" style="background:${foundTech.color}22;color:${foundTech.color};">${foundTech.nom.charAt(0)}</div>
     <div class="tech-name">${foundTech.nom}</div>
-    <div class="tech-centre">📍 ${currentCentre}</div>`;
+    <div class="tech-centre">📍 ${currentCentre}</div>
+    <div style="font-size:11px;color:#4A6880;margin-top:4px;">Centre habituel : ${foundTech.centre}</div>`;
   show('v-confirm');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// BADGE
-// ═══════════════════════════════════════════════════════════════════════════
 async function badge() {
-  const now = new Date();
-  const hh = String(now.getHours()).padStart(2,'0');
-  const mm = String(now.getMinutes()).padStart(2,'0');
-  const timeStr = `${hh}:${mm}`;
-  const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-
-  const entry = {
-    nom: foundTech.nom,
-    centreHabituel: foundTech.centre,
-    centreBadge: currentCentre,
-    color: foundTech.color,
-    time: timeStr,
-    date: dateStr,
-    timestamp: now.getTime()
-  };
-
-  // Sauvegarder en local
+  const now=new Date();
+  const timeStr=[now.getHours(),now.getMinutes()].map(n=>String(n).padStart(2,'0')).join(':');
+  const dateStr=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+  const entry={nom:foundTech.nom,centreHabituel:foundTech.centre,centreBadge:currentCentre,color:foundTech.color,time:timeStr,date:dateStr,timestamp:now.getTime()};
   badgeLog.unshift(entry);
-  if (badgeLog.length > 200) badgeLog = badgeLog.slice(0,200);
-  localStorage.setItem('dw_log', JSON.stringify(badgeLog));
-
-  // Sauvegarder sur Firebase
-  try {
-    if (window._db && window._firebase) {
-      const { collection, addDoc } = window._firebase;
-      await addDoc(collection(window._db, 'badgeages'), entry);
-      console.log('Badge sauvegardé Firebase ✅');
-    }
-  } catch(e) {
-    console.log('Firebase erreur (local sauvegardé):', e);
-  }
-
-  // Success screen
-  document.getElementById('sc-name').textContent = foundTech.nom;
-  document.getElementById('sc-centre').textContent = '📍 ' + currentCentre;
-  document.getElementById('sc-time').textContent = timeStr;
-
-  const isMobile = foundTech.centre !== currentCentre;
-  document.getElementById('sc-cra').textContent = isMobile
-    ? `Présence à ${currentCentre} enregistrée ✓ (centre habituel : ${foundTech.centre})`
-    : `Présence du ${dateStr} enregistrée ✓`;
-
+  if(badgeLog.length>200) badgeLog=badgeLog.slice(0,200);
+  localStorage.setItem('dw_log',JSON.stringify(badgeLog));
+  try{if(window._db&&window._firebase){const{collection,addDoc}=window._firebase;await addDoc(collection(window._db,'badgeages'),entry);}}catch(e){}
+  document.getElementById('sc-name').textContent=foundTech.nom;
+  document.getElementById('sc-centre').textContent='📍 '+currentCentre;
+  document.getElementById('sc-time').textContent=timeStr;
+  document.getElementById('sc-cra').textContent=foundTech.centre!==currentCentre
+    ?`Présence à ${currentCentre} enregistrée ✓ (habituel : ${foundTech.centre})`
+    :`Présence du ${dateStr} enregistrée ✓`;
   show('v-success');
   startCountdown();
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// COUNTDOWN
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ COUNTDOWN ════════════════════════════════════════════════════
 function startCountdown() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  let s = 6;
-  const fill = document.getElementById('cd-fill');
-  const txt = document.getElementById('cd-txt');
-  fill.style.transition = 'none';
-  fill.style.width = '100%';
-  setTimeout(() => {
-    fill.style.transition = 'width 1s linear';
-    fill.style.width = '0%';
-  }, 50);
-  txt.textContent = `Retour dans ${s}s…`;
-  countdownTimer = setInterval(() => {
-    s--;
-    txt.textContent = `Retour dans ${s}s…`;
-    if (s <= 0) { clearInterval(countdownTimer); reset(); }
-  }, 1000);
+  if(countdownTimer) clearInterval(countdownTimer);
+  let s=6;
+  const fill=document.getElementById('cd-fill');
+  const txt=document.getElementById('cd-txt');
+  fill.style.transition='none';fill.style.width='100%';
+  setTimeout(()=>{fill.style.transition='width 1s linear';fill.style.width='0%';},50);
+  txt.textContent=`Retour dans ${s}s…`;
+  countdownTimer=setInterval(()=>{s--;txt.textContent=`Retour dans ${s}s…`;if(s<=0){clearInterval(countdownTimer);reset();}},1000);
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// ADMIN
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ ADMIN ════════════════════════════════════════════════════════
 async function showAdmin() {
   show('v-admin');
-  const now = new Date();
-  const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-  document.getElementById('admin-date-lbl').textContent = dateStr;
-
-  let todayLog = badgeLog.filter(l => l.date === dateStr);
-
-  // Essayer de charger depuis Firebase
-  try {
-    if (window._db && window._firebase) {
-      const { collection, getDocs, query, where } = window._firebase;
-      const q = query(collection(window._db, 'badgeages'), where('date', '==', dateStr));
-      const snap = await getDocs(q);
-      const fbData = [];
-      snap.forEach(d => fbData.push(d.data()));
-      if (fbData.length > 0) {
-        todayLog = fbData.sort((a,b) => b.timestamp - a.timestamp);
-        console.log('Données Firebase chargées ✅', fbData.length, 'badges');
-      }
-    }
-  } catch(e) {
-    console.log('Firebase lecture erreur:', e);
-  }
-
-  const uniq = [...new Set(todayLog.map(l=>l.nom))];
-  const centres = [...new Set(todayLog.map(l=>l.centreBadge))];
-
-  document.getElementById('adm-present').textContent = uniq.length;
-  document.getElementById('adm-total').textContent = todayLog.length;
-  document.getElementById('adm-centres').textContent = centres.length;
-
-  const log = document.getElementById('adm-log');
-  if (todayLog.length === 0) {
-    log.innerHTML = '<div style="text-align:center;color:#4A6880;padding:20px;font-size:13px;">Aucun badgeage aujourd\'hui</div>';
-  } else {
-    log.innerHTML = todayLog.map(l => {
-      const isMobile = l.centreBadge !== l.centreHabituel;
-      return `<div class="log-item">
-        <div class="log-avatar" style="background:${l.color}22;color:${l.color};">${l.nom.charAt(0)}</div>
-        <div>
-          <div class="log-name">${l.nom}</div>
-          <div class="log-info">📍 ${l.centreBadge}${isMobile?' <span style="color:#D97706;">⚡ mobile</span>':''}</div>
-        </div>
-        <div class="log-time">${l.time}</div>
-      </div>`;
-    }).join('');
-  }
+  const now=new Date();
+  const dateStr=`${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+  document.getElementById('admin-date-lbl').textContent=dateStr;
+  let todayLog=badgeLog.filter(l=>l.date===dateStr);
+  try{if(window._db&&window._firebase){const{collection,getDocs,query,where}=window._firebase;const q=query(collection(window._db,'badgeages'),where('date','==',dateStr));const snap=await getDocs(q);const fb=[];snap.forEach(d=>fb.push(d.data()));if(fb.length>0) todayLog=fb.sort((a,b)=>b.timestamp-a.timestamp);}}catch(e){}
+  const uniq=[...new Set(todayLog.map(l=>l.nom))];
+  const centres=[...new Set(todayLog.map(l=>l.centreBadge))];
+  document.getElementById('adm-present').textContent=uniq.length;
+  document.getElementById('adm-total').textContent=todayLog.length;
+  document.getElementById('adm-centres').textContent=centres.length;
+  const log=document.getElementById('adm-log');
+  log.innerHTML=todayLog.length===0?'<div style="text-align:center;color:#4A6880;padding:20px;font-size:13px;">Aucun badgeage aujourd\'hui</div>':todayLog.map(l=>`<div class="log-item"><div class="log-avatar" style="background:${l.color||'#2563EB'}22;color:${l.color||'#2563EB'};">${l.nom.charAt(0)}</div><div><div class="log-name">${l.nom}</div><div class="log-info">📍 ${l.centreBadge}${l.centreBadge!==l.centreHabituel?' <span style="color:#D97706;">⚡ mobile</span>':''}</div></div><div class="log-time">${l.time}</div></div>`).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════════════════════════════
-function show(id) {
-  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
+// ═══ UTILS ════════════════════════════════════════════════════════
+function show(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function reset(){if(countdownTimer)clearInterval(countdownTimer);foundTech=null;initKeypads();show('v-code');}
 
-function reset() {
-  if (countdownTimer) clearInterval(countdownTimer);
-  foundTech = null;
-  // Rebuild main keypad to reset its internal state
-  buildKeypad('keypad', 'dots', (code, updateDots, resetCode) => {
-    if (code === ADMIN_CODE) {
-      updateDots('ok');
-      setTimeout(() => { resetCode(); show('v-admin-code'); }, 400);
-      return;
-    }
-    const tech = TECHS.find(t => t.code === code);
-    if (tech) {
-      updateDots('ok');
-      foundTech = tech;
-      setTimeout(() => showConfirm(), 400);
-    } else {
-      updateDots('error');
-      setTimeout(() => { resetCode(); }, 900);
-      setTimeout(() => show('v-error'), 1100);
-    }
-  });
-  show('v-code');
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// INIT
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ INIT ════════════════════════════════════════════════════════
 setCentreHeader();
+initKeypads();
+
+// Sync auto au démarrage
+setTimeout(async()=>{
+  await syncTechsFromPortail();
+  initKeypads();
+}, 2500);
 </script>
 </body>
 </html>
