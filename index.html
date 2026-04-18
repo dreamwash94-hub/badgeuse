@@ -5,8 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dreamwash">
+<meta name="application-name" content="Dreamwash Badgeuse">
 <meta name="theme-color" content="#0A1628">
+<meta name="mobile-web-app-capable" content="yes">
 <title>Dreamwash — Badgeuse</title>
+
+<!-- PWA Manifest inline -->
+<script>
+const manifestData = {
+  name: "Dreamwash Badgeuse",
+  short_name: "Dreamwash",
+  description: "Système de badgeage Dreamwash",
+  start_url: "./",
+  display: "fullscreen",
+  orientation: "landscape",
+  background_color: "#0A1628",
+  theme_color: "#0A1628",
+  icons: [
+    { src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230A1628'/%3E%3Cellipse cx='256' cy='310' rx='130' ry='110' fill='%232563EB'/%3E%3Cellipse cx='256' cy='280' rx='100' ry='90' fill='%231D4ED8'/%3E%3Cpath d='M256 120 C256 120 200 180 200 240 C200 280 224 310 256 310 C288 310 312 280 312 240 C312 180 256 120 256 120Z' fill='%2360A5FA'/%3E%3Ccircle cx='230' cy='220' r='18' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E", sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifestData)], {type:'application/json'});
+const manifestURL = URL.createObjectURL(blob);
+const link = document.createElement('link');
+link.rel = 'manifest';
+link.href = manifestURL;
+document.head.appendChild(link);
+</script>
+
+<!-- Apple Touch Icon SVG inline -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='100' fill='%230A1628'/%3E%3Cellipse cx='256' cy='310' rx='130' ry='110' fill='%232563EB'/%3E%3Cellipse cx='256' cy='280' rx='100' ry='90' fill='%231D4ED8'/%3E%3Cpath d='M256 120 C256 120 200 180 200 240 C200 280 224 310 256 310 C288 310 312 280 312 240 C312 180 256 120 256 120Z' fill='%2360A5FA'/%3E%3Ccircle cx='230' cy='220' r='18' fill='rgba(255,255,255,0.4)'/%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -85,18 +114,13 @@ body{
 
 /* ═══ CODE SCREEN ═══════════════════════════════════════════════ */
 #v-code{
-  align-items:stretch;
+  align-items:center;
+  justify-content:center;
 }
-.code-left{
-  flex:1;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  padding:40px;
-  border-right:1px solid rgba(255,255,255,0.05);
-}
-.code-right{
-  width:420px;flex-shrink:0;
-  display:flex;flex-direction:column;justify-content:center;align-items:center;
-  padding:40px 50px;
+.code-center{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;max-width:420px;
+  padding:40px 20px;
 }
 .welcome-title{
   font-size:42px;font-weight:900;
@@ -372,6 +396,21 @@ body{
 </head>
 <body>
 
+<!-- ═══ INSTALL BANNER ═══════════════════════════════════════════ -->
+<div id="install-banner" style="display:none;align-items:center;justify-content:space-between;padding:10px 24px;background:linear-gradient(135deg,#1D4ED8,#2563EB);gap:12px;flex-shrink:0;">
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="width:36px;height:36px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">💧</div>
+    <div>
+      <div style="font-size:13px;font-weight:700;">Installer l'application Dreamwash</div>
+      <div style="font-size:11px;opacity:0.7;">Accès rapide depuis l'écran d'accueil</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;">
+    <button onclick="installApp()" style="background:#fff;color:#1D4ED8;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;">📲 Installer</button>
+    <button onclick="document.getElementById('install-banner').style.display='none'" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:13px;cursor:pointer;">✕</button>
+  </div>
+</div>
+
 <!-- ═══ HEADER ═══════════════════════════════════════════════════ -->
 <div class="header">
   <div class="logo">
@@ -387,26 +426,30 @@ body{
   </div>
 </div>
 
+<!-- Tip iOS Safari -->
+<div id="ios-tip" style="display:none;align-items:center;justify-content:center;gap:10px;padding:8px 24px;background:rgba(37,99,235,0.15);border-bottom:1px solid rgba(37,99,235,0.2);font-size:12px;color:rgba(255,255,255,0.6);">
+  <span>📲</span>
+  <span>Pour installer : appuyez sur <strong style="color:#60A5FA;">Partager</strong> puis <strong style="color:#60A5FA;">"Sur l'écran d'accueil"</strong></span>
+  <button onclick="document.getElementById('ios-tip').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;font-size:14px;margin-left:8px;">✕</button>
+</div>
+
 <!-- ═══ MAIN ═══════════════════════════════════════════════════ -->
 <div class="main">
 
   <!-- SAISIE CODE -->
   <div class="view active" id="v-code">
-    <div class="code-left">
-      <div class="welcome-title">Bonjour ! 👋</div>
-      <div class="welcome-sub">Entrez votre code pour pointer votre présence</div>
-      <div style="margin-top:40px;text-align:center;opacity:0.15;">
-        <div style="font-size:80px;">💧</div>
-        <div style="font-size:18px;font-weight:700;margin-top:12px;letter-spacing:2px;">DREAMWASH</div>
+    <div class="code-center">
+      <!-- Phrase de bienvenue -->
+      <div style="text-align:center;margin-bottom:36px;">
+        <div style="font-size:38px;font-weight:900;letter-spacing:-0.5px;margin-bottom:8px;">Bonjour ! 👋</div>
+        <div style="font-size:16px;color:rgba(255,255,255,0.45);font-weight:400;line-height:1.4;">Entrez votre code pour pointer<br>votre présence</div>
       </div>
-    </div>
-
-    <div class="code-right">
-      <div class="code-label">Code personnel à 4 chiffres</div>
+      <!-- Points de code -->
       <div class="dots" id="dots">
         <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
       </div>
-      <div class="keypad" id="keypad"></div>
+      <!-- Clavier -->
+      <div class="keypad" id="keypad" style="width:100%;"></div>
     </div>
   </div>
 
@@ -567,6 +610,39 @@ let currentCentre = localStorage.getItem('dw_centre') || "Aeroville A";
 let badgeLog = JSON.parse(localStorage.getItem('dw_log') || '[]');
 let countdownTimer = null;
 let todayLog = [];
+
+// ═══ PWA INSTALL ════════════════════════════════════════════════
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Afficher bouton d'installation
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'flex';
+});
+
+function installApp() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => {
+      deferredPrompt = null;
+      const banner = document.getElementById('install-banner');
+      if (banner) banner.style.display = 'none';
+    });
+  }
+}
+
+window.addEventListener('appinstalled', () => {
+  const banner = document.getElementById('install-banner');
+  if (banner) banner.style.display = 'none';
+});
+
+// Détecter iOS pour afficher le tip d'installation
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+const isStandalone = window.navigator.standalone;
+if (isIOS && !isStandalone) {
+  document.getElementById('ios-tip').style.display = 'flex';
+}
 
 // ═══ CLOCK ════════════════════════════════════════════════════════
 function updateClock() {
