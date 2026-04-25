@@ -133,6 +133,30 @@ body{
 .key.del{color:rgba(255,255,255,0.5);}
 .key.empty{opacity:0;pointer-events:none;}
 
+/* ═══ BADGE TYPE ════════════════════════════════════════════════ */
+.btn-badge.depart {
+  background: rgba(239,68,68,0.15);
+  border: 2px solid rgba(239,68,68,0.4);
+  color: #FCA5A5;
+  box-shadow: none;
+}
+.btn-toggle-type {
+  background: none; border: none;
+  color: rgba(255,255,255,0.4);
+  font-size: clamp(12px,1.8vw,14px); font-weight: 600;
+  cursor: pointer; font-family: 'Inter', sans-serif;
+  text-decoration: underline; padding: 4px 0; margin-bottom: 4px;
+  width: 100%; text-align: center;
+}
+.sc-type-pill {
+  display: inline-block;
+  padding: 6px 20px; border-radius: 20px;
+  font-size: clamp(13px,2vw,15px); font-weight: 800;
+  margin-bottom: clamp(6px,1.2vh,12px);
+}
+.sc-type-pill.arrivee { background: rgba(74,222,128,0.2); color: #4ADE80; border: 1px solid rgba(74,222,128,0.3); }
+.sc-type-pill.depart  { background: rgba(239,68,68,0.2); color: #F87171; border: 1px solid rgba(239,68,68,0.3); }
+
 /* ═══ CONFIRM ═══════════════════════════════════════════════════ */
 #v-confirm{align-items:center;justify-content:center;overflow:auto;}
 .confirm-wrap{
