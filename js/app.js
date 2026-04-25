@@ -26,6 +26,7 @@ var TECHS = JSON.parse(localStorage.getItem('dw_techs_cache')||'null') || [
 const ADMIN_CODE = "9999";
 let foundTech = null, currentCentre = localStorage.getItem('dw_centre') || "Aeroville A";
 let badgeLog = JSON.parse(localStorage.getItem('dw_log')||'[]'), countdownTimer = null;
+let currentBadgeType = 'arrivee';
 
 // ═══ PWA ════════════════════════════════════════════════════════
 let deferredPrompt = null;
@@ -52,6 +53,38 @@ function updateClock() {
   document.getElementById('datedisp').textContent = `${jours[now.getDay()]} ${now.getDate()} ${mois[now.getMonth()]} ${now.getFullYear()}`;
 }
 setInterval(updateClock, 1000); updateClock();
+
+// ═══ BADGE TYPE ══════════════════════════════════════════════════
+function getTodayStr() {
+  const now = new Date();
+  return `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
+}
+
+function detectBadgeType(nom) {
+  const today = getTodayStr();
+  const todayEntries = badgeLog.filter(l => l.date === today && l.nom === nom);
+  if (todayEntries.length === 0) return 'arrivee';
+  return todayEntries[0].type === 'arrivee' ? 'depart' : 'arrivee';
+}
+
+function toggleBadgeType() {
+  currentBadgeType = currentBadgeType === 'arrivee' ? 'depart' : 'arrivee';
+  updateConfirmUI();
+}
+
+function updateConfirmUI() {
+  const btn = document.getElementById('btn-badge-action');
+  const toggle = document.getElementById('btn-toggle-type');
+  if (currentBadgeType === 'arrivee') {
+    btn.textContent = '✅ Arrivée';
+    btn.className = 'btn-badge arrivee';
+    toggle.textContent = 'Pointer un départ à la place';
+  } else {
+    btn.textContent = '🚪 Départ';
+    btn.className = 'btn-badge depart';
+    toggle.textContent = 'Pointer une arrivée à la place';
+  }
+}
 
 // ═══ CENTRE ══════════════════════════════════════════════════════
 function setCentreHeader() { document.getElementById('centre-header').textContent = '📍 ' + currentCentre; }
@@ -132,10 +165,12 @@ function initKeypads() {
 
 // ═══ CONFIRM ════════════════════════════════════════════════════
 function showConfirm() {
+  currentBadgeType = detectBadgeType(foundTech.nom);
   document.getElementById('confirm-initial').textContent = foundTech.nom.charAt(0);
   document.getElementById('confirm-name').textContent = foundTech.nom;
   document.getElementById('confirm-poste').textContent = foundTech.poste || 'Laveur Automobile';
   document.getElementById('confirm-centre-pill').textContent = '📍 ' + currentCentre + (foundTech.centre !== currentCentre ? ' · ⚡ Mobile' : '');
+  updateConfirmUI();
   show('v-confirm');
 }
 
@@ -144,16 +179,19 @@ async function badge() {
   const now = new Date();
   const timeStr = [now.getHours(), now.getMinutes()].map(n => String(n).padStart(2,'0')).join(':');
   const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-  const entry = {nom:foundTech.nom, centreHabituel:foundTech.centre, centreBadge:currentCentre, color:foundTech.color, time:timeStr, date:dateStr, timestamp:now.getTime()};
+  const entry = {nom:foundTech.nom, centreHabituel:foundTech.centre, centreBadge:currentCentre, color:foundTech.color, time:timeStr, date:dateStr, timestamp:now.getTime(), type:currentBadgeType};
   badgeLog.unshift(entry); if(badgeLog.length > 200) badgeLog = badgeLog.slice(0,200);
   localStorage.setItem('dw_log', JSON.stringify(badgeLog));
   try { if(window._db && window._firebase) { const {collection, addDoc} = window._firebase; await addDoc(collection(window._db,'badgeages'), entry); } } catch(e) {}
+  const typePill = document.getElementById('sc-type');
+  typePill.textContent = currentBadgeType === 'arrivee' ? '🟢 Arrivée' : '🔴 Départ';
+  typePill.className = 'sc-type-pill ' + currentBadgeType;
   document.getElementById('sc-name').textContent = foundTech.nom;
   document.getElementById('sc-centre').textContent = '📍 ' + currentCentre;
   document.getElementById('sc-time').textContent = timeStr;
   document.getElementById('sc-cra').textContent = foundTech.centre !== currentCentre
     ? `Présence à ${currentCentre} enregistrée ✓`
-    : `Présence du ${dateStr} enregistrée ✓`;
+    : `${currentBadgeType === 'arrivee' ? 'Arrivée' : 'Départ'} du ${dateStr} enregistré ✓`;
   show('v-success'); startCountdown();
 }
 
@@ -185,15 +223,23 @@ async function showAdmin() {
       if(fb.length > 0) tl = fb.sort((a,b) => b.timestamp - a.timestamp);
     }
   } catch(e) {}
-  const uniq = [...new Set(tl.map(l => l.nom))];
+  const allNoms = [...new Set(tl.map(l => l.nom))];
   const centres = [...new Set(tl.map(l => l.centreBadge))];
-  document.getElementById('adm-present').textContent = uniq.length;
+  const presents = allNoms.filter(nom => {
+    const entries = tl.filter(l => l.nom === nom);
+    return !entries[0]?.type || entries[0].type === 'arrivee';
+  });
+  document.getElementById('adm-present').textContent = presents.length;
   document.getElementById('adm-total').textContent = tl.length;
   document.getElementById('adm-centres').textContent = centres.length;
   const log = document.getElementById('adm-log');
   log.innerHTML = tl.length === 0
     ? '<div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.3);padding:40px;font-size:15px;">Aucun badgeage aujourd\'hui</div>'
-    : tl.map(l => `<div class="log-card"><div class="log-av">${l.nom.charAt(0)}</div><div><div class="log-name">${l.nom}</div><div class="log-info">📍 ${l.centreBadge}${l.centreBadge!==l.centreHabituel?' <span class="mobile-pill">⚡ Mobile</span>':''}</div></div><div class="log-time">${l.time}</div></div>`).join('');
+    : tl.map(l => {
+        const isDepart = l.type === 'depart';
+        const typeLabel = isDepart ? '🔴 Départ' : '🟢 Arrivée';
+        return `<div class="log-card"><div class="log-av">${l.nom.charAt(0)}</div><div style="flex:1;min-width:0;"><div class="log-name">${l.nom}</div><div class="log-info">📍 ${l.centreBadge}${l.centreBadge!==l.centreHabituel?' <span class="mobile-pill">⚡ Mobile</span>':''} · <span style="color:${isDepart?'#F87171':'#4ADE80'};font-weight:700;">${typeLabel}</span></div></div><div class="log-time">${l.time}</div></div>`;
+      }).join('');
 }
 
 // ═══ UTILS ══════════════════════════════════════════════════════

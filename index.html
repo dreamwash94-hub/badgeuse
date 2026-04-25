@@ -92,7 +92,8 @@ document.head.appendChild(link);
       <div class="confirm-name" id="confirm-name"></div>
       <div class="confirm-poste" id="confirm-poste"></div>
       <div class="confirm-centre-pill" id="confirm-centre-pill">📍 Centre</div>
-      <button class="btn-badge" onclick="badge()">✅ Je pointe ma présence</button>
+      <button class="btn-badge arrivee" id="btn-badge-action" onclick="badge()">✅ Arrivée</button>
+      <button class="btn-toggle-type" id="btn-toggle-type" onclick="toggleBadgeType()">Pointer un départ à la place</button>
       <button class="btn-back" onclick="reset()">← Ce n'est pas moi</button>
     </div>
   </div>
@@ -101,6 +102,7 @@ document.head.appendChild(link);
   <div class="view" id="v-success">
     <div class="success-wrap">
       <div class="success-circle">✓</div>
+      <div class="sc-type-pill" id="sc-type"></div>
       <div class="success-name" id="sc-name"></div>
       <div class="success-centre" id="sc-centre"></div>
       <div class="success-time" id="sc-time"></div>
