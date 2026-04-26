@@ -210,36 +210,77 @@ function startCountdown() {
 // ═══ ADMIN ══════════════════════════════════════════════════════
 async function showAdmin() {
   show('v-admin');
-  const now = new Date();
-  const dateStr = `${String(now.getDate()).padStart(2,'0')}/${String(now.getMonth()+1).padStart(2,'0')}/${now.getFullYear()}`;
-  document.getElementById('admin-date-lbl').textContent = dateStr;
-  let tl = badgeLog.filter(l => l.date === dateStr);
+  const today = getTodayStr();
+  document.getElementById('admin-date-lbl').textContent = today;
+  let tl = badgeLog.filter(l => l.date === today);
   try {
     if(window._db && window._firebase) {
       const {collection, getDocs, query, where} = window._firebase;
-      const q = query(collection(window._db,'badgeages'), where('date','==',dateStr));
+      const q = query(collection(window._db,'badgeages'), where('date','==',today));
       const snap = await getDocs(q);
       const fb = []; snap.forEach(d => fb.push(d.data()));
       if(fb.length > 0) tl = fb.sort((a,b) => b.timestamp - a.timestamp);
     }
   } catch(e) {}
-  const allNoms = [...new Set(tl.map(l => l.nom))];
-  const centres = [...new Set(tl.map(l => l.centreBadge))];
-  const presents = allNoms.filter(nom => {
-    const entries = tl.filter(l => l.nom === nom);
-    return !entries[0]?.type || entries[0].type === 'arrivee';
+
+  // Grouper par technicien
+  const techMap = {};
+  tl.forEach(e => { if(!techMap[e.nom]) techMap[e.nom] = []; techMap[e.nom].push(e); });
+
+  const summaries = Object.values(techMap).map(entries => {
+    const last = entries[0];
+    const isOnSite = !last.type || last.type === 'arrivee';
+    const arrivals = entries.filter(e => !e.type || e.type === 'arrivee');
+    const departures = entries.filter(e => e.type === 'depart');
+    const firstArrival = arrivals[arrivals.length - 1];
+    const lastDeparture = departures[0];
+    let duration = '';
+    if(firstArrival && lastDeparture) {
+      const diff = lastDeparture.timestamp - firstArrival.timestamp;
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      duration = h > 0 ? `${h}h${String(m).padStart(2,'0')}` : `${m}min`;
+    }
+    return { nom:last.nom, color:last.color||'#60A5FA', centreBadge:last.centreBadge,
+      centreHabituel:last.centreHabituel, isMobile:last.centreBadge!==last.centreHabituel,
+      isOnSite, arrivalTime:firstArrival?.time||null, departureTime:lastDeparture?.time||null, duration };
   });
-  document.getElementById('adm-present').textContent = presents.length;
-  document.getElementById('adm-total').textContent = tl.length;
+
+  const onSite = summaries.filter(t => t.isOnSite);
+  const departed = summaries.filter(t => !t.isOnSite);
+  const centres = [...new Set(tl.map(l => l.centreBadge))];
+
+  document.getElementById('adm-present').textContent = onSite.length;
+  document.getElementById('adm-total').textContent = departed.length;
   document.getElementById('adm-centres').textContent = centres.length;
+
+  function renderCard(t) {
+    const mobile = t.isMobile ? '<span class="mobile-pill">⚡ Mobile</span>' : '';
+    const depSpan = t.isOnSite
+      ? '<span class="time-depart en-cours">en cours…</span>'
+      : `<span class="time-depart">🔴 ${t.departureTime}</span>`;
+    const dur = t.duration ? `<span class="time-duration">${t.duration}</span>` : '';
+    return `<div class="tech-presence-card${t.isOnSite?' on-site':''}">
+      <div class="log-av" style="background:${t.color}33;color:${t.color};">${t.nom.charAt(0)}</div>
+      <div class="tech-presence-info">
+        <div class="tech-presence-name">${t.nom}${mobile?' '+mobile:''}</div>
+        <div class="tech-presence-times">
+          <span class="time-arrivee">🟢 ${t.arrivalTime||'—'}</span>
+          <span class="time-arrow">→</span>
+          ${depSpan}${dur?' '+dur:''}
+        </div>
+      </div>
+    </div>`;
+  }
+
   const log = document.getElementById('adm-log');
-  log.innerHTML = tl.length === 0
-    ? '<div style="grid-column:1/-1;text-align:center;color:rgba(255,255,255,0.3);padding:40px;font-size:15px;">Aucun badgeage aujourd\'hui</div>'
-    : tl.map(l => {
-        const isDepart = l.type === 'depart';
-        const typeLabel = isDepart ? '🔴 Départ' : '🟢 Arrivée';
-        return `<div class="log-card"><div class="log-av">${l.nom.charAt(0)}</div><div style="flex:1;min-width:0;"><div class="log-name">${l.nom}</div><div class="log-info">📍 ${l.centreBadge}${l.centreBadge!==l.centreHabituel?' <span class="mobile-pill">⚡ Mobile</span>':''} · <span style="color:${isDepart?'#F87171':'#4ADE80'};font-weight:700;">${typeLabel}</span></div></div><div class="log-time">${l.time}</div></div>`;
-      }).join('');
+  if(tl.length === 0) {
+    log.innerHTML = '<div style="text-align:center;color:rgba(255,255,255,0.3);padding:40px;font-size:15px;">Aucun badgeage aujourd\'hui</div>';
+    return;
+  }
+  log.innerHTML =
+    (onSite.length > 0 ? `<div class="presence-section-title">🟢 Sur site · ${onSite.length}</div><div class="presence-grid">${onSite.map(renderCard).join('')}</div>` : '') +
+    (departed.length > 0 ? `<div class="presence-section-title" style="margin-top:${onSite.length>0?'8px':'0'};">🔴 Partis · ${departed.length}</div><div class="presence-grid">${departed.map(renderCard).join('')}</div>` : '');
 }
 
 // ═══ UTILS ══════════════════════════════════════════════════════
