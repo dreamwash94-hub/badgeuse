@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Test Scanner QR</title>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #0f172a;
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  gap: 20px;
+}
+h1 { font-size: 20px; font-weight: 800; color: #60A5FA; }
+.cam-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #000;
+  aspect-ratio: 1;
+}
+video { width: 100%; height: 100%; object-fit: cover; display: block; }
+canvas { display: none; }
+
+/* Viseur */
+.viewfinder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.vf-box {
+  width: 60%;
+  aspect-ratio: 1;
+  border: 3px solid rgba(96,165,250,0.8);
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.45);
+  position: relative;
+}
+.vf-box::before, .vf-box::after,
+.vf-corner-br::before, .vf-corner-br::after {
+  content: '';
+  position: absolute;
+  width: 20px; height: 20px;
+  border-color: #60A5FA;
+  border-style: solid;
+}
+.vf-box::before  { top: -3px; left: -3px;  border-width: 4px 0 0 4px; border-radius: 8px 0 0 0; }
+.vf-box::after   { top: -3px; right: -3px; border-width: 4px 4px 0 0; border-radius: 0 8px 0 0; }
+.vf-corner-br::before { bottom: -3px; left: -3px;  border-width: 0 0 4px 4px; border-radius: 0 0 0 8px; }
+.vf-corner-br::after  { bottom: -3px; right: -3px; border-width: 0 4px 4px 0; border-radius: 0 0 8px 0; }
+
+/* Ligne de scan animée */
+.scan-line {
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #60A5FA, transparent);
+  animation: scanMove 2s ease-in-out infinite;
+}
+@keyframes scanMove {
+  0%   { top: 10%; }
+  50%  { top: 85%; }
+  100% { top: 10%; }
+}
+
+.result-box {
+  width: 100%;
+  max-width: 400px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 14px;
+  padding: 16px 20px;
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.result-box.ok  { border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.08); }
+.result-box.err { border-color: rgba(239,68,68,0.4);  background: rgba(239,68,68,0.08); }
+.result-label { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: .08em; }
+.result-value { font-size: 22px; font-weight: 900; color: #fff; }
+.result-sub   { font-size: 13px; color: rgba(255,255,255,0.5); }
+
+.btn {
+  width: 100%; max-width: 400px;
+  padding: 14px;
+  border: none; border-radius: 12px;
+  font-size: 16px; font-weight: 800;
+  cursor: pointer; font-family: inherit;
+}
+.btn-start  { background: #60A5FA; color: #0f172a; }
+.btn-stop   { background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.2); color: #fff; }
+.btn-reset  { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); font-size: 13px; padding: 10px; }
+
+.status { font-size: 13px; color: rgba(255,255,255,0.4); text-align: center; }
+</style>
+</head>
+<body>
+
+<h1>📷 Test Scanner QR Code</h1>
+
+<div class="cam-wrap" id="cam-wrap" style="display:none;">
+  <video id="video" playsinline autoplay muted></video>
+  <canvas id="canvas"></canvas>
+  <div class="viewfinder">
+    <div class="vf-box">
+      <div class="vf-corner-br"></div>
+      <div class="scan-line"></div>
+    </div>
+  </div>
+</div>
+
+<div class="result-box" id="result-box">
+  <div class="result-label">Résultat du scan</div>
+  <div class="result-value" id="result-value">—</div>
+  <div class="result-sub" id="result-sub">Lance le scanner pour tester</div>
+</div>
+
+<button class="btn btn-start" id="btn-start" onclick="startScan()">📷 Démarrer la caméra</button>
+<button class="btn btn-stop"  id="btn-stop"  onclick="stopScan()" style="display:none;">⏹ Arrêter</button>
+<button class="btn btn-reset" id="btn-reset" onclick="resetResult()" style="display:none;">🔄 Scanner un autre</button>
+
+<div class="status" id="status">Appuie sur "Démarrer" pour activer la caméra</div>
+
+<script>
+let stream = null;
+let animFrame = null;
+let scanning = true;
+
+async function startScan() {
+  document.getElementById('btn-start').style.display = 'none';
+  document.getElementById('status').textContent = '⏳ Accès à la caméra…';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 1280 } }
+    });
+    const video = document.getElementById('video');
+    video.srcObject = stream;
+    await video.play();
+    document.getElementById('cam-wrap').style.display = 'block';
+    document.getElementById('btn-stop').style.display = 'block';
+    document.getElementById('status').textContent = '🔍 Présente un QR code devant la caméra…';
+    scanning = true;
+    requestAnimationFrame(tick);
+  } catch(e) {
+    document.getElementById('status').textContent = '❌ Caméra inaccessible : ' + e.message;
+    document.getElementById('btn-start').style.display = 'block';
+  }
+}
+
+function tick() {
+  if (!scanning) return;
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  if (video.readyState !== video.HAVE_ENOUGH_DATA) { animFrame = requestAnimationFrame(tick); return; }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+  if (code) {
+    onQRFound(code.data);
+  } else {
+    animFrame = requestAnimationFrame(tick);
+  }
+}
+
+function onQRFound(data) {
+  scanning = false;
+  stopScan();
+  const box = document.getElementById('result-box');
+  document.getElementById('result-value').textContent = data;
+  // Vérifie si c'est un code à 4 chiffres (format PIN badgeuse)
+  if (/^\d{4}$/.test(data)) {
+    box.className = 'result-box ok';
+    document.getElementById('result-label').textContent = '✅ Code PIN détecté';
+    document.getElementById('result-sub').textContent = 'Ce QR code correspond à un code technicien valide';
+  } else {
+    box.className = 'result-box err';
+    document.getElementById('result-label').textContent = '⚠️ Contenu scanné';
+    document.getElementById('result-sub').textContent = 'Format inattendu — le QR devrait contenir un code PIN à 4 chiffres';
+  }
+  document.getElementById('btn-reset').style.display = 'block';
+  document.getElementById('status').textContent = '✅ QR code scanné avec succès !';
+}
+
+function stopScan() {
+  scanning = false;
+  if (animFrame) cancelAnimationFrame(animFrame);
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  document.getElementById('cam-wrap').style.display = 'none';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('btn-start').style.display = 'block';
+}
+
+function resetResult() {
+  document.getElementById('result-box').className = 'result-box';
+  document.getElementById('result-label').textContent = 'Résultat du scan';
+  document.getElementById('result-value').textContent = '—';
+  document.getElementById('result-sub').textContent = 'Lance le scanner pour tester';
+  document.getElementById('btn-reset').style.display = 'none';
+  document.getElementById('status').textContent = 'Appuie sur "Démarrer" pour activer la caméra';
+  startScan();
+}
+</script>
+</body>
+</html>
