@@ -163,6 +163,93 @@ function initKeypads() {
   });
 }
 
+// ═══ QR SCANNER ══════════════════════════════════════════════════
+let qrStream = null, qrAnimFrame = null, capturedPhoto = null, qrLocked = false;
+
+async function startQR() {
+  show('v-qr');
+  qrLocked = false;
+  document.getElementById('qr-status').textContent = '⏳ Accès à la caméra…';
+  document.getElementById('qr-overlay').style.display = 'none';
+  try {
+    qrStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('qr-video');
+    video.srcObject = qrStream;
+    await video.play();
+    document.getElementById('qr-status').textContent = 'Présentez votre QR code devant la caméra';
+    qrAnimFrame = requestAnimationFrame(qrTick);
+  } catch(e) {
+    document.getElementById('qr-status').textContent = '❌ Caméra inaccessible — utilisez le code PIN';
+    setTimeout(() => { stopQR(); show('v-code'); }, 2500);
+  }
+}
+
+function qrTick() {
+  if (qrLocked) return;
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  if (!qrStream || video.readyState !== video.HAVE_ENOUGH_DATA) { qrAnimFrame = requestAnimationFrame(qrTick); return; }
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+  if (code) {
+    onQRDetected(code.data);
+  } else {
+    qrAnimFrame = requestAnimationFrame(qrTick);
+  }
+}
+
+function onQRDetected(data) {
+  const tech = TECHS.find(t => t.code === data);
+  if (!tech) {
+    document.getElementById('qr-status').textContent = '❌ Code non reconnu, réessayez';
+    setTimeout(() => {
+      if (!qrLocked) {
+        document.getElementById('qr-status').textContent = 'Présentez votre QR code devant la caméra';
+        qrAnimFrame = requestAnimationFrame(qrTick);
+      }
+    }, 1500);
+    return;
+  }
+  qrLocked = true;
+  foundTech = tech;
+  document.getElementById('qr-ok-name').textContent = tech.nom;
+  document.getElementById('qr-overlay').style.display = 'flex';
+  // Laisser le tech baisser son téléphone, puis prendre la photo
+  setTimeout(() => {
+    capturePhoto();
+    stopQR();
+    showConfirm();
+  }, 1800);
+}
+
+function capturePhoto() {
+  const video = document.getElementById('qr-video');
+  const canvas = document.getElementById('qr-canvas');
+  const maxW = 360;
+  const scale = Math.min(1, maxW / (video.videoWidth || maxW));
+  canvas.width = (video.videoWidth || maxW) * scale;
+  canvas.height = (video.videoHeight || maxW) * scale;
+  const ctx = canvas.getContext('2d');
+  // Miroir horizontal (caméra frontale)
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.65);
+}
+
+function stopQR() {
+  qrLocked = true;
+  if (qrAnimFrame) cancelAnimationFrame(qrAnimFrame);
+  if (qrStream) { qrStream.getTracks().forEach(t => t.stop()); qrStream = null; }
+  document.getElementById('qr-overlay').style.display = 'none';
+}
+
 // ═══ CONFIRM ════════════════════════════════════════════════════
 function showConfirm() {
   currentBadgeType = detectBadgeType(foundTech.nom);
@@ -170,6 +257,17 @@ function showConfirm() {
   document.getElementById('confirm-name').textContent = foundTech.nom;
   document.getElementById('confirm-poste').textContent = foundTech.poste || 'Laveur Automobile';
   document.getElementById('confirm-centre-pill').textContent = '📍 ' + currentCentre + (foundTech.centre !== currentCentre ? ' · ⚡ Mobile' : '');
+  // Photo capturée via QR
+  const photo = document.getElementById('confirm-photo');
+  const initial = document.getElementById('confirm-initial');
+  if (capturedPhoto) {
+    photo.src = capturedPhoto;
+    photo.style.display = 'block';
+    initial.style.display = 'none';
+  } else {
+    photo.style.display = 'none';
+    initial.style.display = '';
+  }
   updateConfirmUI();
   show('v-confirm');
 }
@@ -285,7 +383,7 @@ async function showAdmin() {
 
 // ═══ UTILS ══════════════════════════════════════════════════════
 function show(id) { document.querySelectorAll('.view').forEach(v => v.classList.remove('active')); document.getElementById(id).classList.add('active'); }
-function reset() { if(countdownTimer) clearInterval(countdownTimer); foundTech = null; initKeypads(); show('v-code'); }
+function reset() { if(countdownTimer) clearInterval(countdownTimer); foundTech = null; capturedPhoto = null; stopQR(); initKeypads(); show('v-code'); }
 
 // ═══ INIT ═══════════════════════════════════════════════════════
 setCentreHeader();

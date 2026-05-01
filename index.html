@@ -27,6 +27,7 @@ document.head.appendChild(link);
 <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='80' fill='%231E40AF'/%3E%3Cpath d='M256 100 C256 100 160 200 160 290 C160 348 202 400 256 400 C310 400 352 348 352 290 C352 200 256 100 256 100Z' fill='%2360A5FA'/%3E%3Cellipse cx='220' cy='270' rx='30' ry='25' fill='rgba(255,255,255,0.35)'/%3E%3C/svg%3E">
 
 <script type="module" src="js/firebase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -78,7 +79,31 @@ document.head.appendChild(link);
           <div class="dot"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
         </div>
         <div class="keypad" id="keypad"></div>
+        <button class="btn-scan-qr" onclick="startQR()">📷 Scanner mon QR code</button>
       </div>
+    </div>
+  </div>
+
+  <!-- SCANNER QR -->
+  <div class="view" id="v-qr">
+    <div class="qr-wrap">
+      <div class="qr-cam-container">
+        <video id="qr-video" playsinline autoplay muted></video>
+        <canvas id="qr-canvas" style="display:none;"></canvas>
+        <div class="qr-viewfinder">
+          <div class="qr-vf-box">
+            <div class="qr-corner-br"></div>
+            <div class="qr-scan-line"></div>
+          </div>
+        </div>
+        <div class="qr-detected-overlay" id="qr-overlay" style="display:none;">
+          <div class="qr-detected-icon">✅</div>
+          <div class="qr-detected-name" id="qr-ok-name"></div>
+          <div class="qr-detected-sub">Baissez votre téléphone… 📸</div>
+        </div>
+      </div>
+      <div class="qr-status" id="qr-status">Présentez votre QR code devant la caméra</div>
+      <button class="btn-back" onclick="stopQR(); show('v-code')">← Retour</button>
     </div>
   </div>
 
@@ -88,6 +113,7 @@ document.head.appendChild(link);
       <div class="confirm-avatar" id="confirm-avatar">
         <div class="confirm-ring"></div>
         <span id="confirm-initial" style="position:relative;z-index:1;"></span>
+        <img id="confirm-photo" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;z-index:2;" alt="">
       </div>
       <div class="confirm-name" id="confirm-name"></div>
       <div class="confirm-poste" id="confirm-poste"></div>
